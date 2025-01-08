@@ -1,17 +1,12 @@
 // src/routes/Home.tsx
 import React from 'react';
-import { Link } from 'react-router-dom';
+import './Home.css';
 
 const Home: React.FC = () => {
   return (
-    <div>
-      <h1>Welcome to Solana Chat</h1>
-      <nav>
-        <ul>
-          <li><Link to="/profiles">Profiles</Link></li>
-          <li><Link to="/group-messaging">Group Messaging</Link></li>
-        </ul>
-      </nav>
+    <div className="home-container">
+      <h2>Welcome to Solana Chat</h2>
+      <p>Connect with your friends, join groups, and chat in real-time on the Solana blockchain!</p>
     </div>
   );
 };

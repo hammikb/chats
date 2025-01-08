@@ -1,5 +1,6 @@
 // src/components/Groups/GroupList.tsx
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../services/supabase';
 
 interface Group {
@@ -9,13 +10,11 @@ interface Group {
 
 const GroupList: React.FC = () => {
   const [groups, setGroups] = useState<Group[]>([]);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchGroups = async () => {
-      const { data, error } = await supabase
-        .from('groups')
-        .select('id, name');
-
+      const { data, error } = await supabase.from('groups').select('id, name');
       if (error) {
         console.error('Error fetching groups:', error);
       } else {
@@ -26,12 +25,18 @@ const GroupList: React.FC = () => {
     fetchGroups();
   }, []);
 
+  const handleGroupClick = (groupId: string) => {
+    navigate(`/group-messaging/${groupId}`); // Navigate to the group's chat room
+  };
+
   return (
     <div className="group-list">
-      <h2>Groups</h2>
+      <h3>Your Groups</h3>
       <ul>
         {groups.map((group) => (
-          <li key={group.id}>{group.name}</li>
+          <li key={group.id} onClick={() => handleGroupClick(group.id)}>
+            {group.name}
+          </li>
         ))}
       </ul>
     </div>
