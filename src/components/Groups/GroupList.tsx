@@ -13,7 +13,7 @@ const GroupList: React.FC = () => {
   useEffect(() => {
     const fetchGroups = async () => {
       const { data, error } = await supabase
-        .from('Groups')
+        .from('groups')
         .select('id, name');
 
       if (error) {

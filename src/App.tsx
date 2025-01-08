@@ -1,9 +1,9 @@
 // src/App.tsx
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
-import Home from '.';
-import Profiles from './routes/Profiles';
-import GroupMessaging from './routes/GroupMessaging';
+import Home from './components/routes/Home';   
+import Profiles from './components/routes/Profiles';
+import GroupMessaging from './components/routes/GroupMessaging';
 
 const App: React.FC = () => {
   return (

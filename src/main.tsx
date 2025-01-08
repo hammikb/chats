@@ -1,12 +1,13 @@
 // src/index.tsx
 import React from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot } from 'react-dom/client'; // No need for ReactDOM
 import App from './App';
-import './index.css'; // Include global styles if any
+import './index.css'; // Import your global styles
 
-ReactDOM.render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
-  document.getElementById('root')
-);
+// Find the root element manually
+const rootElement = document.getElementById('root');
+
+if (rootElement) {
+  const root = createRoot(rootElement); // Create a React root manually
+  root.render(<App />);
+}

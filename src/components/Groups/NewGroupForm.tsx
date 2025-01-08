@@ -6,15 +6,21 @@ const NewGroupForm: React.FC = () => {
   const [groupName, setGroupName] = useState('');
 
   const handleCreateGroup = async () => {
-    const { data, error } = await supabase
-      .from('Groups')
-      .insert([{ name: groupName }]);
-
-    if (error) {
-      console.error('Error creating group:', error);
-    } else {
-      console.log('Group created:', data);
-      setGroupName(''); // Reset the form
+    try {
+      const { data, error } = await supabase
+        .from('groups') // Ensure this matches your table name
+        .insert([{ name: groupName }]);
+  
+      if (error) {
+        console.error('Error creating group:', error);
+        alert(`Error: ${error.message}`);
+      } else {
+        console.log('Group created:', data);
+        setGroupName(''); // Reset the form
+      }
+    } catch (err) {
+      console.error('Unexpected error:', err);
+      alert('Unexpected error occurred while creating the group.');
     }
   };
 
