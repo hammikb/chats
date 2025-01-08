@@ -1,13 +1,12 @@
+// src/index.tsx
 import React from 'react';
-import ReactDOM from 'react-dom/client';
+import ReactDOM from 'react-dom';
 import App from './App';
-import WalletConnectionProvider from './components/WalletConnectionProvider';
-import './index.css';
+import './index.css'; // Include global styles if any
 
-ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
+ReactDOM.render(
   <React.StrictMode>
-    <WalletConnectionProvider>
-      <App />
-    </WalletConnectionProvider>
-  </React.StrictMode>
+    <App />
+  </React.StrictMode>,
+  document.getElementById('root')
 );

@@ -1,16 +1,19 @@
-import React, { useState } from 'react';
-import Sidebar from './components/Sidebar';
-import MainChatArea from './components/MainChatArea';
-import './App.css'; // Import the main CSS for basic styling
+// src/App.tsx
+import React from 'react';
+import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import Home from '.';
+import Profiles from './routes/Profiles';
+import GroupMessaging from './routes/GroupMessaging';
 
 const App: React.FC = () => {
-  const [selectedChat, setSelectedChat] = useState<string | null>(null);
-
   return (
-    <div className="app-layout">
-      <Sidebar onSelectChat={setSelectedChat} />
-      <MainChatArea selectedChat={selectedChat} />
-    </div>
+    <Router>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/profiles" element={<Profiles />} />
+        <Route path="/group-messaging" element={<GroupMessaging />} />
+      </Routes>
+    </Router>
   );
 };
 
