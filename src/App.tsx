@@ -1,3 +1,4 @@
+// src/App.tsx
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Route, Routes, NavLink } from 'react-router-dom';
 import Home from './components/routes/Home';
@@ -21,7 +22,6 @@ const App: React.FC = () => {
       console.log('No wallet connected.');
     }
   }, [connected, publicKey]);
-  
 
   const checkOrCreateUserProfile = async (walletAddress: string) => {
     try {
@@ -30,7 +30,7 @@ const App: React.FC = () => {
         .select('id')
         .eq('wallet_address', walletAddress)
         .single();
-  
+
       if (error && error.code === 'PGRST116') {
         console.log('No profile found. Creating a new profile...');
         const { error: insertError } = await supabase
@@ -40,7 +40,7 @@ const App: React.FC = () => {
             username: `user_${walletAddress.slice(0, 6)}`,
             created_at: new Date().toISOString(),
           });
-  
+
         if (insertError) {
           if (insertError.code === '23505' || insertError.code === '409') {
             console.warn('Profile already exists or duplicate key conflict.');
@@ -61,12 +61,12 @@ const App: React.FC = () => {
       console.error('Unexpected error:', err);
     }
   };
-  
 
   return (
     <Router>
-      <div className="app-container">
-        <header className="navbar">
+      <div className="app-layout">
+        {/* Side Navigation Bar */}
+        <aside className="side-nav">
           <h1 className="app-title">Solana Chat</h1>
           <nav>
             <ul className="nav-links">
@@ -87,8 +87,12 @@ const App: React.FC = () => {
               </li>
             </ul>
           </nav>
-          <WalletMultiButton /> {/* This button handles wallet connection */}
-        </header>
+          <div className="wallet-button-container">
+            <WalletMultiButton /> {/* Wallet button moved to bottom left */}
+          </div>
+        </aside>
+
+        {/* Main Content Area */}
         <main className="main-content">
           <Routes>
             <Route path="/" element={<Home />} />
