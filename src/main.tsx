@@ -1,13 +1,16 @@
-// src/main.tsx
-import { createRoot } from 'react-dom/client';
-import App from './App';
+
 import './index.css';
+// src/main.tsx or src/index.tsx
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App';
+import { WalletConnectionProvider } from './services/WalletProvider';
 
-const rootElement = document.getElementById('root');
+ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
+  <React.StrictMode>
+    <WalletConnectionProvider>
+      <App />
+    </WalletConnectionProvider>
+  </React.StrictMode>
+);
 
-if (rootElement) {
-  const root = createRoot(rootElement);
-  root.render(
-    <App />
-  );
-}
