@@ -1,7 +1,7 @@
 // src/components/Groups/GroupList.tsx
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../../services/supabase';
+import { supabase }from '../../services/supabase';
 
 interface Group {
   id: string;

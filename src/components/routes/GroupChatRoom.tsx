@@ -2,7 +2,8 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '../../services/supabase';
-import { RealtimePostgresChangesPayload, User } from '@supabase/supabase-js';
+import { useWallet } from '@solana/wallet-adapter-react';
+import { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import './GroupChatRoom.css';
 
 interface Message {
@@ -18,25 +19,9 @@ const GroupChatRoom: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<User | null>(null);
+  const { publicKey } = useWallet();
 
-    // Fetch authenticated user
-    const fetchUser = async () => {
-      const {
-        data: { user },
-        error,
-      } = await supabase.auth.getUser();
-
-      if (error) {
-        console.error('Error fetching user:', error);
-      } else {
-        setUser(user);
-      }
-    };
-
-    fetchUser();
-
-    // Fetch initial messages
+  useEffect(() => {
     const fetchMessages = async () => {
       const { data, error } = await supabase
         .from('messages')
@@ -63,48 +48,40 @@ const GroupChatRoom: React.FC = () => {
 
     fetchMessages();
 
-    useEffect(() => {
-      const channel = supabase
-        .channel(`group-messages-${groupId}`)
-        .on(
-          'postgres_changes',
-          { event: 'INSERT', schema: 'public', table: 'messages', filter: `group_id=eq.${groupId}` },
-          (payload: RealtimePostgresChangesPayload<Message>) => {
-            const newMsg = payload.new as Message; // Explicitly cast payload.new to Message
-            if (newMsg && newMsg.id && newMsg.user_id && newMsg.content && newMsg.created_at) {
-              setMessages((prevMessages) => [
-                ...prevMessages,
-                {
-                  id: newMsg.id,
-                  user_id: newMsg.user_id,
-                  content: newMsg.content,
-                  created_at: newMsg.created_at,
-                  username: newMsg.username || 'Unknown',
-                },
-              ]);
-            }
-          }
-        )
-        .subscribe();
-    
-      // Clean up subscription on unmount
-      return () => {
-        supabase.removeChannel(channel);
-      };
-    }, [groupId]);
-    
+    const channel = supabase
+      .channel(`group-messages-${groupId}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'messages', filter: `group_id=eq.${groupId}` },
+        (payload: RealtimePostgresChangesPayload<Message>) => {
+          const newMsg = payload.new as Message;
+          setMessages((prevMessages) => [...prevMessages, newMsg]);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [groupId]);
 
   const handleSendMessage = async () => {
-    if (!newMessage.trim()) return;
+    if (!newMessage.trim() || !publicKey) return;
 
     const { error } = await supabase
       .from('messages')
-      .insert([{ group_id: groupId, content: newMessage }]);
+      .insert([
+        {
+          group_id: groupId,
+          content: newMessage,
+          user_id: publicKey.toString(),
+        },
+      ]);
 
     if (error) {
       console.error('Error sending message:', error);
     } else {
-      setNewMessage(''); // Clear the input after sending
+      setNewMessage('');
     }
   };
 
@@ -115,19 +92,23 @@ const GroupChatRoom: React.FC = () => {
         <p>Loading messages...</p>
       ) : (
         <div className="messages">
-          {messages.map((msg) => (
-            <div
-              key={msg.id}
-              className={`message ${
-                msg.user_id === user?.id ? 'sent' : 'received'
-              }`}
-            >
-              <strong>{msg.username}</strong>: {msg.content}
-              <span className="timestamp">
-                {new Date(msg.created_at).toLocaleTimeString()}
-              </span>
-            </div>
-          ))}
+          {messages.length === 0 ? (
+            <p>No messages yet. Start the conversation!</p>
+          ) : (
+            messages.map((msg) => (
+              <div
+                key={msg.id}
+                className={`message ${
+                  msg.user_id === publicKey?.toString() ? 'sent' : 'received'
+                }`}
+              >
+                <strong>{msg.username}</strong>: {msg.content}
+                <span className="timestamp">
+                  {new Date(msg.created_at).toLocaleTimeString()}
+                </span>
+              </div>
+            ))
+          )}
         </div>
       )}
       <div className="input-area">
@@ -141,6 +122,7 @@ const GroupChatRoom: React.FC = () => {
       </div>
     </div>
   );
+  
 };
 
 export default GroupChatRoom;
