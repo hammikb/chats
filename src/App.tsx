@@ -1,17 +1,20 @@
-// src/App.tsx
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Route, Routes, NavLink } from 'react-router-dom';
 import Home from './components/routes/Home';
-import Profiles from './components/routes/Profiles';
 import GroupMessaging from './components/routes/GroupMessaging';
 import GroupChatRoom from './components/routes/GroupChatRoom';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { supabase } from './services/supabase';
+import SettingsModal from './components/routes/SettingsModal';
+import { FaCog } from 'react-icons/fa';
+
 import './App.css';
 
 const App: React.FC = () => {
   const { publicKey, connected } = useWallet();
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [userProfile, setUserProfile] = useState({});
   const [profileCreated, setProfileCreated] = useState(false);
 
   useEffect(() => {
@@ -20,6 +23,12 @@ const App: React.FC = () => {
       checkOrCreateUserProfile(publicKey.toString());
     } else if (!connected) {
       console.log('No wallet connected.');
+    }
+  }, [connected, publicKey]);
+
+  useEffect(() => {
+    if (connected && publicKey) {
+      fetchUserProfile(publicKey.toString());
     }
   }, [connected, publicKey]);
 
@@ -42,14 +51,10 @@ const App: React.FC = () => {
           });
 
         if (insertError) {
-          if (insertError.code === '23505' || insertError.code === '409') {
-            console.warn('Profile already exists or duplicate key conflict.');
-          } else {
-            console.error('Error creating profile:', insertError.message);
-          }
+          console.error('Error creating profile:', insertError.message);
         } else {
           console.log('Profile created successfully.');
-          setProfileCreated(true); // Prevent further attempts
+          setProfileCreated(true);
         }
       } else if (error) {
         console.error('Error fetching profile:', error.message);
@@ -62,10 +67,49 @@ const App: React.FC = () => {
     }
   };
 
+  const fetchUserProfile = async (walletAddress: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('wallet_address', walletAddress)
+        .single();
+
+      if (error) {
+        console.error('Error fetching user profile:', error.message);
+      } else {
+        setUserProfile(data);
+      }
+    } catch (err) {
+      console.error('Unexpected error:', err);
+    }
+  };
+
+  const updateUserProfile = async (updatedProfile: { username: string }) => {
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ username: updatedProfile.username })
+        .eq('wallet_address', publicKey?.toString());
+  
+      if (error) {
+        console.error('Error updating profile:', error.message);
+      } else {
+        console.log('Profile updated successfully.');
+        setUserProfile((prev) => ({ ...prev, ...updatedProfile }));
+      }
+    } catch (err) {
+      console.error('Unexpected error:', err);
+    }
+  };
+  
+
+  const openSettingsModal = () => setIsSettingsModalOpen(true);
+  const closeSettingsModal = () => setIsSettingsModalOpen(false);
+
   return (
     <Router>
       <div className="app-layout">
-        {/* Side Navigation Bar */}
         <aside className="side-nav">
           <h1 className="app-title">Solana Chat</h1>
           <nav>
@@ -76,31 +120,34 @@ const App: React.FC = () => {
                 </NavLink>
               </li>
               <li>
-                <NavLink to="/profiles" className={({ isActive }) => (isActive ? 'active' : '')}>
-                  Profiles
-                </NavLink>
-              </li>
-              <li>
                 <NavLink to="/group-messaging" className={({ isActive }) => (isActive ? 'active' : '')}>
                   Group Messaging
                 </NavLink>
               </li>
             </ul>
-          </nav>
+          </nav> 
           <div className="wallet-button-container">
-            <WalletMultiButton /> {/* Wallet button moved to bottom left */}
+          <button onClick={openSettingsModal} className="settings-button">
+              <FaCog size={24} />
+            </button>
+            <WalletMultiButton />
           </div>
         </aside>
 
-        {/* Main Content Area */}
         <main className="main-content">
           <Routes>
             <Route path="/" element={<Home />} />
-            <Route path="/profiles" element={<Profiles />} />
             <Route path="/group-messaging" element={<GroupMessaging />} />
             <Route path="/group-messaging/:groupId" element={<GroupChatRoom />} />
           </Routes>
         </main>
+
+        <SettingsModal
+          isOpen={isSettingsModalOpen}
+          onRequestClose={closeSettingsModal}
+          userProfile={userProfile}
+          updateUserProfile={updateUserProfile}
+        />
       </div>
     </Router>
   );

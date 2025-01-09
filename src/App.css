@@ -13,7 +13,7 @@
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  width: 250px;
+  /*width: 250px;*/
   background-color: #1a1a1a;
   color: #ffffff;
   padding: 20px;
@@ -54,4 +54,12 @@
   margin-top: auto;
   padding-top: 20px;
   border-top: 1px solid #333;
+}
+
+/* Force the dropdown to pop up instead of down */
+.wallet-adapter-dropdown-list {
+  bottom: 120% !important; /* Move dropdown above the button */
+  top: auto !important;
+  margin-bottom: 10px !important;
+  right: 5% !important;
 }
