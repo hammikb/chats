@@ -8,13 +8,10 @@ import GroupMessaging from './components/routes/GroupMessaging';
 import GroupChatRoom from './components/routes/GroupChatRoom';
 import { WalletConnectionProvider } from './services/WalletProvider';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
-import { useAuth } from './hooks/useAuth';
 
 import './App.css';
 
 const App: React.FC = () => {
-  useAuth(); // Initialize wallet authentication
-
   return (
     <WalletConnectionProvider>
       <Router>
@@ -40,7 +37,7 @@ const App: React.FC = () => {
                 </li>
               </ul>
             </nav>
-            <WalletMultiButton />
+            <WalletMultiButton /> {/* This button handles wallet connection */}
           </header>
           <main className="main-content">
             <Routes>

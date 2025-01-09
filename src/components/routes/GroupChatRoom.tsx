@@ -28,23 +28,24 @@ const GroupChatRoom: React.FC = () => {
         .select('id, user_id, content, created_at, profiles(username)')
         .eq('group_id', groupId)
         .order('created_at', { ascending: true });
-
+    
       if (error) {
         console.error('Error fetching messages:', error);
         return;
       }
-
+    
       const formattedMessages: Message[] = data.map((msg: any) => ({
         id: msg.id,
         user_id: msg.user_id,
         content: msg.content,
         created_at: msg.created_at,
-        username: msg.profiles[0]?.username || 'Unknown',
+        username: msg.profiles?.[0]?.username || 'Unknown',
       }));
-
+    
       setMessages(formattedMessages);
       setLoading(false);
     };
+    
 
     fetchMessages();
 
@@ -67,23 +68,49 @@ const GroupChatRoom: React.FC = () => {
 
   const handleSendMessage = async () => {
     if (!newMessage.trim() || !publicKey) return;
-
-    const { error } = await supabase
-      .from('messages')
-      .insert([
-        {
-          group_id: groupId,
-          content: newMessage,
-          user_id: publicKey.toString(),
-        },
-      ]);
-
-    if (error) {
-      console.error('Error sending message:', error);
-    } else {
-      setNewMessage('');
+  
+    try {
+      // Step 1: Retrieve the user's UUID from Supabase using the wallet public key
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('wallet_address', publicKey.toString())
+        .single(); // We expect only one profile to match, so we use .single()
+  
+      if (error) {
+        console.error('Error fetching user ID:', error);
+        return;
+      }
+  
+      const userId = data?.id; // Retrieve the UUID from the query result
+  
+      if (!userId) {
+        console.error('User ID not found for the connected wallet.');
+        return;
+      }
+  
+      // Step 2: Insert the message into the messages table with the retrieved user ID
+      const { error: insertError } = await supabase
+        .from('messages')
+        .insert([
+          {
+            group_id: groupId,
+            content: newMessage,
+            user_id: userId, // Use the retrieved UUID as user_id
+          },
+        ]);
+  
+      if (insertError) {
+        console.error('Error sending message:', insertError);
+      } else {
+        setNewMessage(''); // Clear the input after sending
+      }
+    } catch (err) {
+      console.error('Unexpected error:', err);
     }
   };
+  
+  
 
   return (
     <div className="group-chat-room">
