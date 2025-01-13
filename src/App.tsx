@@ -27,6 +27,19 @@ const App: React.FC = () => {
   });
   const [profileCreated, setProfileCreated] = useState(false);
 
+  
+  
+  
+  
+  useEffect(() => {
+    if (connected && publicKey && !profileCreated) {
+      console.log('Wallet connected with public key:', publicKey.toString());
+      checkOrCreateUserProfile(); // Pass wallet address directly
+    } else if (!connected) {
+      console.log('No wallet connected.');
+    }
+  }, [connected, publicKey]);
+  
   useEffect(() => {
     const checkSession = async () => {
       const { data, error } = await supabase.auth.getSession(); // No arguments needed
@@ -43,19 +56,6 @@ const App: React.FC = () => {
     checkSession();
   }, []);
   
-  
-  
-  
-  useEffect(() => {
-    if (connected && publicKey && !profileCreated) {
-      console.log('Wallet connected with public key:', publicKey.toString());
-      checkOrCreateUserProfile(); // Call without arguments
-    } else if (!connected) {
-      console.log('No wallet connected.');
-    }
-  }, [connected, publicKey]);
-  
-
   useEffect(() => {
     if (connected && publicKey) {
       fetchUserProfile(); // Remove the argument
@@ -64,47 +64,50 @@ const App: React.FC = () => {
   
 
   const checkOrCreateUserProfile = async () => {
-    const { data, error: sessionError } = await supabase.auth.getSession();
-    if (sessionError || !data.session) {
-      console.error('User not authenticated');
-      return;
-    }
+    const { data } = await supabase.auth.getSession();
+    const session = data.session;
   
-    const userId = data.session.user.id; // Correctly access user ID from session
+    if (session && session.user) {
+      const userId = session.user.id; // Use the authenticated user's UUID
   
-    try {
-      const { data: profileData, error } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('wallet_address', userId)
-        .single();
-  
-      if (error && error.code === 'PGRST116') {
-        console.log('No profile found. Creating a new profile...');
-        const { error: insertError } = await supabase
+      try {
+        const { data: profileData, error } = await supabase
           .from('profiles')
-          .insert({
-            wallet_address: userId,
-            username: `user_${userId.slice(0, 6)}`,
-            created_at: new Date().toISOString(),
-          });
+          .select('id')
+          .eq('id', userId)
+          .single();
   
-        if (insertError) {
-          console.error('Error creating profile:', insertError.message);
+        if (error && error.code === 'PGRST116') {
+          console.log('No profile found. Creating a new profile...');
+          const { error: insertError } = await supabase
+            .from('profiles')
+            .insert({
+              id: userId, // Store the UUID as the unique identifier
+              wallet_address: publicKey?.toString(), // Store the wallet address
+              username: `user_${userId.slice(0, 6)}`,
+              created_at: new Date().toISOString(),
+            });
+  
+          if (insertError) {
+            console.error('Error creating profile:', insertError.message);
+          } else {
+            console.log('Profile created successfully.');
+            setProfileCreated(true);
+          }
+        } else if (error) {
+          console.error('Error fetching profile:', error.message);
         } else {
-          console.log('Profile created successfully.');
+          console.log('Profile already exists:', profileData);
           setProfileCreated(true);
         }
-      } else if (error) {
-        console.error('Error fetching profile:', error.message);
-      } else {
-        console.log('Profile already exists:', profileData);
-        setProfileCreated(true);
+      } catch (err) {
+        console.error('Unexpected error:', err);
       }
-    } catch (err) {
-      console.error('Unexpected error:', err);
+    } else {
+      console.error('User not authenticated');
     }
   };
+  
   
 
   const fetchUserProfile = async () => {
@@ -132,63 +135,81 @@ const App: React.FC = () => {
       console.error('Unexpected error:', err);
     }
   };
-  const updateUserProfile = async (
-    updatedProfile: { username: string; twitter: string },
-    file?: File
-  ) => {
-    const { data, error: authError } = await supabase.auth.getUser();
-    const user = data?.user; // Extract the user object
+
+  const updateUserProfile = async (updatedProfile: { username: string; twitter: string }, file?: File) => {
+    const { data } = await supabase.auth.getSession();
+    const session = data.session;
   
-    if (authError || !user) {
-      console.error('User not authenticated');
-      return;
-    }
+    if (session && session.user) {
+      const userId = session.user.id; // Define userId correctly
+      console.log('User ID:', userId);
   
-    try {
-      let profilePictureUrl = userProfile.profilePicture; // Keep existing picture if no new file is uploaded
+      try {
+        let profilePictureUrl = userProfile.profilePicture;
   
-      // Handle file upload if a new file is provided
-      if (file) {
-        const { data, error: uploadError } = await supabase.storage
-          .from('profile-pictures')
-          .upload(`public/${user.id}`, file, {
-            cacheControl: '3600',
-            upsert: true,
-          });
-  
-        if (uploadError) {
-          console.error('Error uploading profile picture:', uploadError.message);
-          return;
+        if (file) {
+          const { data, error: uploadError } = await supabase.storage
+            .from('profile-pictures')
+            .upload(`public/${userId}`, file, {
+              cacheControl: '3600',
+              upsert: true,
+            });
+        
+          if (uploadError) {
+            console.error('Error uploading profile picture:', uploadError.message);
+            return;
+          }
+        
+          // Retrieve public URL of the uploaded file
+          const { data: publicUrlData } = supabase.storage
+            .from('profile-pictures')
+            .getPublicUrl(data.path) as { data: { publicUrl: string } };
+        
+          const profilePictureUrl = publicUrlData.publicUrl;
+        
+          // Use profilePictureUrl when updating the profile
+          const { error: updateError } = await supabase
+            .from('profiles')
+            .update({
+              username: updatedProfile.username,
+              twitter: updatedProfile.twitter,
+              profilePicture: profilePictureUrl, // Include profile picture URL
+            })
+            .eq('wallet_address', userId);
+        
+          if (updateError) {
+            console.error('Error updating profile:', updateError.message);
+          } else {
+            console.log('Profile updated successfully.');
+          }
         }
+        
+        
   
-        // Get the public URL of the uploaded file
-        const { publicUrl } = supabase.storage
-          .from('profile-pictures')
-          .getPublicUrl(data.path).data;
+        const { error } = await supabase
+          .from('profiles')
+          .update({
+            username: updatedProfile.username,
+            twitter: updatedProfile.twitter,
+            profilePicture: profilePictureUrl,
+          })
+          .eq('wallet_address', userId);
   
-        profilePictureUrl = publicUrl;
+        if (error) {
+          console.error('Error updating profile:', error.message);
+        } else {
+          console.log('Profile updated successfully.');
+        }
+      } catch (err) {
+        console.error('Unexpected error:', err);
       }
-  
-      // Update the profile in Supabase
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          username: updatedProfile.username,
-          twitter: updatedProfile.twitter,
-          profilePicture: profilePictureUrl,
-        })
-        .eq('wallet_address', user.id); // Use user.id correctly
-  
-      if (error) {
-        console.error('Error updating profile:', error.message);
-      } else {
-        setUserProfile((prev) => ({ ...prev, ...updatedProfile, profilePicture: profilePictureUrl }));
-        console.log('Profile updated successfully.');
-      }
-    } catch (err) {
-      console.error('Unexpected error:', err);
+    } else {
+      console.error('User not authenticated');
     }
   };
+  
+  
+  
   
   
   const openSettingsModal = () => setIsSettingsModalOpen(true);
